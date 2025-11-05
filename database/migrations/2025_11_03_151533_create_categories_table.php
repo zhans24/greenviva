@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::create('categories', function (Blueprint $t) {
+            $t->id();
+            $t->string('name');
+            $t->string('slug')->unique();
+            $t->unsignedInteger('sort')->default(0);
+            $t->boolean('is_active')->default(true);
+
+            // SEO
+            $t->string('seo_title')->nullable();
+            $t->string('seo_h1')->nullable();
+            $t->text('seo_description')->nullable();
+
+            $t->timestamps();
+        });
+    }
+    public function down(): void {
+        Schema::dropIfExists('categories');
+    }
+};
