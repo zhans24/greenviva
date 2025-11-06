@@ -22,29 +22,50 @@ class ProductForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
+
             Tabs::make()
                 ->tabs([
+
+                    // =======================
+                    //      ДАННЫЕ
+                    // =======================
                     Tabs\Tab::make('Данные')->schema([
                         Section::make()->schema([
                             Select::make('category_id')
-                                ->relationship('category','name')
-                                ->label('Категория')->searchable()->preload(),
+                                ->relationship('category', 'id')
+                                ->label('Категория')
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->getOptionLabelFromRecordUsing(
+                                    fn ($record) => $record->getTranslation('name', app()->getLocale(), false)
+                                        ?: $record->getTranslation('name', 'ru', false)
+                                ),
 
                             Select::make('brand_id')
+                                ->relationship('brand', 'id')
                                 ->label('Бренд')
-                                ->relationship('brand', 'name')
-                                ->searchable()->preload()->required(),
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->getOptionLabelFromRecordUsing(
+                                    fn ($record) => $record->getTranslation('name', app()->getLocale(), false)
+                                        ?: $record->getTranslation('name', 'ru', false)
+                                ),
+
 
                             Hidden::make('slug_is_custom')->default(false),
 
-                            TextInput::make('name')
-                                ->label('Название')->required()
+                            TextInput::make('name.ru')->label('Название (RU)')->required()
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                    if (! $get('slug_is_custom')) {
-                                        $set('slug', Str::slug((string) $state));
+                                    if (! $get('slug_is_custom') && filled($state)) {
+                                        $set('slug', Str::slug($state));
                                     }
                                 }),
+
+                            TextInput::make('name.kz')->label('Атауы (KZ)'),
+                            TextInput::make('name.en')->label('Name (EN)'),
 
                             TextInput::make('slug')
                                 ->label('Слаг')->required()->unique(ignoreRecord: true)
@@ -52,46 +73,60 @@ class ProductForm
                                 ->suffixAction(
                                     Action::make('generateSlug')
                                         ->icon('heroicon-m-arrow-path')
-                                        ->tooltip('Сгенерировать из названия')
+                                        ->tooltip('Сгенерировать из RU названия')
                                         ->action(fn (Get $get, Set $set) => [
-                                            $set('slug', Str::slug((string) $get('name'))),
+                                            $set('slug', Str::slug((string) $get('name.ru'))),
                                             $set('slug_is_custom', false),
                                         ])
                                 )
                                 ->afterStateUpdated(fn ($state, Set $set) => $set('slug_is_custom', filled($state))),
 
-
                             TextInput::make('sku')->label('Код товара')->maxLength(100),
 
-                            // 🔁 Цены: «Цена» = old_price (required), «Цена со скидкой» = price (<= old_price)
-                            TextInput::make('old_price')
-                                ->label('Цена, ₸')
-                                ->numeric()
-                                ->minValue(0)
-                                ->required()
-                                ->suffix('₸'),
+                            TextInput::make('old_price')->label('Цена, ₸')
+                                ->numeric()->minValue(0)->required()->suffix('₸'),
 
-                            TextInput::make('price')
-                                ->label('Цена со скидкой, ₸')
-                                ->numeric()
-                                ->minValue(0)
-                                ->suffix('₸')
+                            TextInput::make('price')->label('Цена со скидкой, ₸')
+                                ->numeric()->minValue(0)->suffix('₸')
                                 ->helperText('Не больше, чем «Цена».')
-                                ->maxValue(fn (Get $get) => $get('old_price') !== null ? (int) $get('old_price') : null),
+                                ->maxValue(fn (Get $get) => $get('old_price') ?? null),
 
                             Toggle::make('is_available')->label('В наличии')->default(true),
                             Toggle::make('is_best_seller')->label('Best seller'),
-                            Toggle::make('is_popular')->label('Популярное')->default(false),
+                            Toggle::make('is_popular')->label('Популярное'),
                         ])->columns(3),
 
-                        Section::make('Вкладки карточки')->schema([
-                            RichEditor::make('description')->label('Описание')->columnSpanFull(),
-                            RichEditor::make('composition')->label('Состав')->columnSpanFull(),
-                            RichEditor::make('usage')->label('Применение')->columnSpanFull(),
-                            Textarea::make('delivery_info')->label('Доставка/оплата')->rows(3)->columnSpanFull(),
+                        // =======================
+                        //    КОНТЕНТ ТОВАРА
+                        // =======================
+                        Section::make('Описание / Состав / Применение / Доставка')->schema([
+
+                            Tabs::make('content_tabs')->tabs([
+                                Tabs\Tab::make('RU')->schema([
+                                    RichEditor::make('description.ru')->label('Описание (RU)')->columnSpanFull(),
+                                    RichEditor::make('composition.ru')->label('Состав (RU)')->columnSpanFull(),
+                                    RichEditor::make('usage.ru')->label('Применение (RU)')->columnSpanFull(),
+                                    RichEditor::make('delivery_info.ru')->label('Доставка/оплата (RU)')->columnSpanFull(),
+                                ]),
+                                Tabs\Tab::make('KZ')->schema([
+                                    RichEditor::make('description.kz')->label('Описание (KZ)'),
+                                    RichEditor::make('composition.kz')->label('Состав (KZ)'),
+                                    RichEditor::make('usage.kz')->label('Применение (KZ)'),
+                                    RichEditor::make('delivery_info.kz')->label('Доставка/оплата (KZ)'),
+                                ]),
+                                Tabs\Tab::make('EN')->schema([
+                                    RichEditor::make('description.en')->label('Description (EN)'),
+                                    RichEditor::make('composition.en')->label('Composition (EN)'),
+                                    RichEditor::make('usage.en')->label('Usage (EN)'),
+                                    RichEditor::make('delivery_info.en')->label('Delivery (EN)'),
+                                ]),
+                            ])
                         ]),
                     ]),
 
+                    // =======================
+                    //        МЕДИА
+                    // =======================
                     Tabs\Tab::make('Медиа')->schema([
                         Section::make('Обложка')->schema([
                             SpatieMediaLibraryFileUpload::make('cover')
@@ -122,16 +157,31 @@ class ProductForm
                         ]),
                     ]),
 
+                    // =======================
+                    //          SEO
+                    // =======================
                     Tabs\Tab::make('SEO')->schema([
-                        Section::make()->schema([
-                            TextInput::make('seo_title')->label('Meta title')->maxLength(255)
-                                ->helperText('Пусто → возьмётся название'),
-                            TextInput::make('seo_h1')->label('H1')->maxLength(255)
-                                ->helperText('Пусто → возьмётся название'),
-                            Textarea::make('seo_description')->label('Meta description')->rows(3)
-                                ->helperText('Пусто → 160 символов из описания'),
-                        ])->columns(1),
+                        Section::make('Мета-теги')->schema([
+                            Tabs::make()->tabs([
+                                Tabs\Tab::make('RU')->schema([
+                                    TextInput::make('seo_title.ru')->label('Meta title (RU)'),
+                                    TextInput::make('seo_h1.ru')->label('H1 (RU)'),
+                                    Textarea::make('seo_description.ru')->label('Meta description (RU)')->rows(3),
+                                ]),
+                                Tabs\Tab::make('KZ')->schema([
+                                    TextInput::make('seo_title.kz')->label('Meta title (KZ)'),
+                                    TextInput::make('seo_h1.kz')->label('H1 (KZ)'),
+                                    Textarea::make('seo_description.kz')->label('Meta description (KZ)')->rows(3),
+                                ]),
+                                Tabs\Tab::make('EN')->schema([
+                                    TextInput::make('seo_title.en')->label('Meta title (EN)'),
+                                    TextInput::make('seo_h1.en')->label('H1 (EN)'),
+                                    Textarea::make('seo_description.en')->label('Meta description (EN)')->rows(3),
+                                ]),
+                            ])
+                        ]),
                     ]),
+
                 ])
                 ->columnSpanFull(),
         ]);

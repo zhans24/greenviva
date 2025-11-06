@@ -11,6 +11,8 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -37,14 +39,27 @@ class BrandResource extends Resource
         return $schema->components([
             Hidden::make('slug_is_custom')->default(false),
 
-            TextInput::make('name')
-                ->label('Название')->required()
-                ->live(onBlur: true)
-                ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                    if (! $get('slug_is_custom')) {
-                        $set('slug', Str::slug((string) $state));
-                    }
-                }),
+            Tabs::make()->tabs([
+                Tab::make('RU')->schema([
+                    TextInput::make('name.ru')
+                        ->label('Название (RU)')
+                        ->required()
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                            if (! $get('slug_is_custom')) {
+                                $set('slug', Str::slug((string) $state));
+                            }
+                        }),
+                ]),
+                Tab::make('KZ')->schema([
+                    TextInput::make('name.kz')
+                        ->label('Атауы (KZ)'),
+                ]),
+                Tab::make('EN')->schema([
+                    TextInput::make('name.en')
+                        ->label('Name (EN)'),
+                ]),
+            ])->columnSpanFull(),
 
             TextInput::make('slug')
                 ->label('Слаг')->required()->unique(ignoreRecord: true)
@@ -52,11 +67,12 @@ class BrandResource extends Resource
                 ->suffixAction(
                     Action::make('generateSlug')
                         ->icon('heroicon-m-arrow-path')
-                        ->tooltip('Сгенерировать из названия')
-                        ->action(fn (Get $get, Set $set) => [
-                            $set('slug', Str::slug((string) $get('name'))),
-                            $set('slug_is_custom', false),
-                        ])
+                        ->tooltip('Сгенерировать из RU')
+                        ->action(function (Get $get, Set $set) {
+                            $ru = (string) data_get($get('name'), 'ru');
+                            $set('slug', Str::slug($ru));
+                            $set('slug_is_custom', false);
+                        })
                 )
                 ->afterStateUpdated(fn ($state, Set $set) => $set('slug_is_custom', filled($state))),
 
@@ -69,13 +85,21 @@ class BrandResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->label('Название')->searchable()->sortable(),
+                TextColumn::make('name')
+                    ->label('Название')
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(fn ($state, Brand $record) =>
+                    $record->getTranslation('name', app()->getLocale(), false)
+                        ?: $record->getTranslation('name', 'ru', false)
+                    ),
                 TextColumn::make('slug')->label('Слаг')->searchable(),
                 ToggleColumn::make('is_active')->label('Активен'),
                 TextColumn::make('updated_at')->label('Обновлено')->dateTime('d.m.Y H:i')->sortable(),
             ])
             ->defaultSort('updated_at', 'desc');
     }
+
 
     public static function getPages(): array
     {

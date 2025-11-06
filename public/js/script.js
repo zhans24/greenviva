@@ -299,14 +299,14 @@ if (window.Inputmask && leadPhones.length) {
             const data = await res.json().catch(() => ({}))
             if (!res.ok || !data.ok) {
                 console.error('Lead error:', data)
-                showToast('Ошибка отправки заявки', 'error')
+                showToast(T('toast.lead_error','Ошибка отправки заявки'), 'error')
                 return
             }
-            showToast('✅ Заявка отправлена! Менеджер свяжется с вами.', 'success')
+            showToast(T('toast.lead_ok','✅ Заявка отправлена! Менеджер свяжется с вами.'), 'success')
             form.reset()
         } catch (err) {
             console.error(err)
-            showToast('Ошибка сети', 'error')
+            showToast(T('toast.network','Ошибка сети'), 'error')
         }
     })
 })()

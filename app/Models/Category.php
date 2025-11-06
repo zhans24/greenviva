@@ -7,10 +7,19 @@ use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Spatie\Translatable\HasTranslations;
 
 class Category extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use HasTranslations;
+
+    public array $translatable = [
+        'name',
+        'seo_title',
+        'seo_h1',
+        'seo_description',
+    ];
 
     protected $fillable = [
         'name','slug','sort','is_active',
@@ -21,16 +30,11 @@ class Category extends Model implements HasMedia
         'is_active' => 'bool',
     ];
 
-    protected static function booted(): void
-    {
-        static::saving(function (self $m) {
-            if (empty($m->slug)) {
-                $m->slug = Str::slug(Str::limit($m->name, 60, ''));
-            }
-        });
-    }
 
-    public function products() { return $this->hasMany(Product::class); }
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
 
     public function registerMediaCollections(): void
     {
@@ -46,18 +50,23 @@ class Category extends Model implements HasMedia
             ->performOnCollections('tile');
     }
 
+    public function getTileUrlAttribute(): ?string
+    {
+        $m = $this->getFirstMedia('tile');
+        return $m ? $m->getUrl('webp') : null;
+    }
+
+    public function nameCurrent(): ?string
+    {
+        return $this->getTranslation('name', app()->getLocale(), false)
+            ?: $this->getTranslation('name', 'ru', false);
+    }
     public function getSeoTitleAttribute($v) { return $v ?: $this->name; }
     public function getSeoH1Attribute($v)    { return $v ?: $this->name; }
     public function getSeoDescriptionAttribute($v)
     {
         if ($v) return $v;
-        $text = $this->products()->value('description') ?? '';
-        return $text ? Str::limit(strip_tags($text), 160) : null;
-    }
-
-    public function getTileUrlAttribute(): ?string
-    {
-        $m = $this->getFirstMedia('tile');
-        return $m ? $m->getUrl('webp') : null;
+        $text = $this->description ? strip_tags($this->description) : '';
+        return $text ? Str::limit($text, 160) : null;
     }
 }

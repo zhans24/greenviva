@@ -24,9 +24,8 @@ class ContactSetting extends Model
     ];
 
     protected $casts = [
-        // без массивов, один телефон как строка
+        'company_text' => 'array',
     ];
-
     public static function cacheKey(): string
     {
         return 'site.contacts';

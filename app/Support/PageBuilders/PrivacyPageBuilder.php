@@ -4,6 +4,7 @@ namespace App\Support\PageBuilders;
 
 use App\Models\Page;
 use App\Support\PageBuilderInterface\PageBuilder;
+use App\Support\Trans;
 
 final class PrivacyPageBuilder implements PageBuilder
 {
@@ -11,8 +12,8 @@ final class PrivacyPageBuilder implements PageBuilder
     {
         return [
             'policy' => [
-                'title'   => data_get($page->content, 'privacy.title', 'Политика конфиденциальности'),
-                'content' => data_get($page->content, 'privacy.body'), // HTML из редактора
+                'title'   => Trans::pick($page->content, 'privacy.title') ?? 'Политика конфиденциальности',
+                'content' => Trans::pick($page->content, 'privacy.body'),
             ],
         ];
     }

@@ -12,6 +12,10 @@
 
 @section('content')
     @php
+        // локализация для ссылок (RU — без префикса)
+        $locale = app()->getLocale();
+        $pref = $locale === 'ru' ? '' : '/'.$locale;
+
         $about = (array) ($data['about'] ?? []);
 
         // История
@@ -71,7 +75,7 @@
             asset('assets/img/rang.png'),
         ];
 
-        // Сертификаты + Альбом (как было)
+        // Сертификаты + Альбом
         $certificates = (array) ($about['certificates'] ?? []);
         $album = (array) ($about['album'] ?? []);
     @endphp
@@ -79,8 +83,8 @@
     <div class="container">
         <nav class="breadcrumbs" aria-label="Хлебные крошки">
             <ul>
-                <li><a class="breadcrumbs__home" href="{{ url('/') }}">Главная</a></li>
-                <li class="breadcrumbs__link" aria-current="page">/ О компании</li>
+                <li><a class="breadcrumbs__home" href="{{ url($pref . '/') }}">Главная</a></li>
+                <li class="breadcrumbs__link" aria-current="page">/ {{ $data['title'] ?? 'О компании' }}</li>
             </ul>
         </nav>
     </div>
@@ -224,7 +228,6 @@
 
             @php
                 // Паттерн “больших” изображений: 1-я и 6-я — большие, повторяется каждые 6.
-                // true = big, false = обычная карточка.
                 $bigPattern = [true, false, false, false, false, true];
                 $patternLen = count($bigPattern);
             @endphp
@@ -232,7 +235,7 @@
             <ul class="about-album__list">
                 @forelse($album as $idx => $photo)
                     @php
-                        // поддержим и массив вида ['src' => '...'] и просто строку-URL
+                        // поддержим массив вида ['src' => '...'] и просто строку-URL
                         $src = is_array($photo) ? ($photo['src'] ?? '') : (string) $photo;
                         $isBig = $bigPattern[$idx % $patternLen] ?? false;
                     @endphp
@@ -266,6 +269,4 @@
             </ul>
         </div>
     </section>
-
 @endsection
-

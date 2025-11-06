@@ -6,11 +6,13 @@
         <meta name="description" content="{{ $data['meta']['description'] }}">
     @endif
 @endpush
+@php $loc = app()->getLocale(); @endphp
 
 @section('content')
     @php
+        use App\Support\Trans;
         $hero        = $data['home']['hero']       ?? [];
-        $advantages  = $data['home']['advantages'] ?? ['title' => 'Преимущества', 'items' => []];
+        $advantages  = $data['home']['advantages'] ?? ['title' => __('app.advantages.title'), 'items' => []];
         /** @var \Illuminate\Support\Collection|\App\Models\Product[] $popular */
         $popular     = $data['home']['popular']    ?? collect();
         $banners     = $data['home']['banners']    ?? [];
@@ -24,20 +26,22 @@
                 @foreach($hero as $s)
                     <div class="swiper-slide hero__slide">
                         <div class="hero__image hero__image--left">
-                            @if(!empty($s['left'])) <img src="{{ $s['left'] }}" alt="Левая упаковка"> @endif
+                            @if(!empty($s['left'])) <img src="{{ $s['left'] }}" alt="left"> @endif
                         </div>
                         <div class="hero__image hero__image--center">
-                            @if(!empty($s['center'])) <img src="{{ $s['center'] }}" alt="Центральная банка"> @endif
+                            @if(!empty($s['center'])) <img src="{{ $s['center'] }}" alt="center"> @endif
                         </div>
                         <div class="hero__image hero__image--right">
-                            @if(!empty($s['right'])) <img src="{{ $s['right'] }}" alt="Капсулы"> @endif
+                            @if(!empty($s['right'])) <img src="{{ $s['right'] }}" alt="right"> @endif
                         </div>
 
                         <div class="hero__content">
                             <h2 class="hero__title">{!! nl2br(e($s['title'] ?? '')) !!}</h2>
                             @if(!empty($s['text'])) <p class="hero__text">{{ $s['text'] }}</p> @endif
                             @if(!empty($s['btn_text']))
-                                <a href="{{ $s['btn_url'] ?: '/catalog' }}" class="btn btn--white">{{ $s['btn_text'] }}</a>
+                                <a href="{{ $loc === 'ru' ? '/catalog' : "/{$loc}/catalog" }}" class="btn btn--white">
+                                    {{ $s['btn_text'] }}
+                                </a>
                             @endif
                         </div>
                     </div>
@@ -49,32 +53,32 @@
 
     <section class="advantages">
         <div class="decor-element-left">
-            <img src="{{ asset('assets/img/decor-1.png') }}" alt="Преимущества декор">
+            <img src="{{ asset('assets/img/decor-1.png') }}" alt="decor">
         </div>
         <div class="container">
             <div class="advantages__inner">
-                <h1 class="title advantages__title">{{ $advantages['title'] ?? 'Преимущества' }}</h1>
+                <h1 class="title advantages__title">{{ $advantages['title'] ?? __('app.advantages.title') }}</h1>
                 <div class="advantages-bg-decor">
                     <ul class="advantages__list">
                         @php $items = $advantages['items'] ?? []; @endphp
                         <li class="advantages__item">
                             <div class="advantages__top"><img src="{{ asset('assets/img/list.png') }}" alt=""></div>
                             <div class="advantages__content">
-                                <h2 class="advantages__item-title">{{ $items[0]['title'] ?? 'Натуральность' }}</h2>
+                                <h2 class="advantages__item-title">{{ $items[0]['title'] ?? __('app.advantages.items.0.title') }}</h2>
                                 <p class="advantages__item-text">{{ $items[0]['text'] ?? '' }}</p>
                             </div>
                         </li>
                         <li class="advantages__item">
                             <div class="advantages__top"><img src="{{ asset('assets/img/certificate.png') }}" alt=""></div>
                             <div class="advantages__content">
-                                <h2 class="advantages__item-title">{{ $items[1]['title'] ?? 'Сертификация' }}</h2>
+                                <h2 class="advantages__item-title">{{ $items[1]['title'] ?? __('app.advantages.items.1.title') }}</h2>
                                 <p class="advantages__item-text">{{ $items[1]['text'] ?? '' }}</p>
                             </div>
                         </li>
                         <li class="advantages__item">
                             <div class="advantages__top"><img src="{{ asset('assets/img/rang.png') }}" alt=""></div>
                             <div class="advantages__content">
-                                <h2 class="advantages__item-title">{{ $items[2]['title'] ?? 'Эффективность' }}</h2>
+                                <h2 class="advantages__item-title">{{ $items[2]['title'] ?? __('app.advantages.items.2.title') }}</h2>
                                 <p class="advantages__item-text">{{ $items[2]['text'] ?? '' }}</p>
                             </div>
                         </li>
@@ -91,7 +95,7 @@
         <div class="popular__inner">
             <div class="container">
                 <div class="popular__top">
-                    <h2 class="title popular__title">Популярные товары</h2>
+                    <h2 class="title popular__title">{{ __('app.popular.title') }}</h2>
                     <div class="popular__navigtion">
                         <button class="popular__btn popular__btn-prev"><img src="{{ asset('assets/icons/arrow-left.svg') }}" alt=""></button>
                         <button class="popular__btn popular__btn-next"><img src="{{ asset('assets/icons/arrow-rigth.svg') }}" alt=""></button>
@@ -101,18 +105,25 @@
             <div class="popular__slider swiper">
                 <div class="swiper-wrapper">
                     @foreach($popular as $p)
-                        @php $eff = $p->price ?? $p->old_price; $effF = number_format($eff, 0, '.', ' '); @endphp
+                        @php
+                            $eff  = $p->price ?? $p->old_price;
+                            $effF = number_format($eff, 0, '.', ' ');
+                            $nameForCart = Trans::model($p, 'name') ?? __('app.product.item');
+                            $desc = Trans::model($p, 'description');
+                        @endphp
                         <div class="swiper-slide">
                             <div class="popular__item">
-                                <a href="{{ route('product.show', $p->slug) }}" class="popular__item-top">
-                                    <img src="{{ $p->cover_url ?? asset('assets/img/products/placeholder.png') }}" alt="{{ $p->name }}">
+                                <a href="{{ $loc === 'ru'
+                                            ? route('product.show', $p->slug)
+                                            : route('product.show.localized', ['locale' => $loc, 'slug' => $p->slug]) }}"
+                                   class="popular__item-top">
+                                    <img src="{{ $p->cover_url ?? asset('assets/img/products/placeholder.png') }}" alt="{{ Trans::model($p, 'name') }}">
                                 </a>
                                 <div class="popular__item-content">
-                                    <h3 class="popular__item-name">{{ $p->name }}</h3>
-                                    <p class="popular__item-text">{{ \Illuminate\Support\Str::limit(strip_tags($p->description ?? ''), 90) }}</p>
+                                    <h3 class="popular__item-name">{{ Trans::model($p, 'name') }}</h3>
+                                    <p class="popular__item-text">{{ \Illuminate\Support\Str::limit(strip_tags($desc ?? ''), 90) }}</p>
                                     <button class="popular__item-btn add-to-cart"
-                                            data-product='@json(["id"=>$p->id,"name"=>$p->name,"price"=>$eff])'>
-                                        Добавить в корзину ({{ $effF }} T)
+                                            data-product='@json(["id"=>$p->id,"name"=>$nameForCart,"price"=>$eff])'>
                                     </button>
                                 </div>
                             </div>
@@ -130,8 +141,8 @@
                     <div class="swiper-wrapper">
                         @foreach($banners as $src)
                             <div class="banner-slide swiper-slide">
-                                <div class="banner-slide-top">Акции</div>
-                                <img src="{{ $src }}" alt="Акции">
+                                <div class="banner-slide-top">{{ __('app.banners.title') }}</div>
+                                <img src="{{ $src }}" alt="banner">
                             </div>
                         @endforeach
                     </div>
@@ -158,7 +169,7 @@
         <img class="main-reviews__decor" src="{{ asset('assets/img/decor-5.png') }}" alt="">
         <div class="container">
             <div class="main-reviews__top">
-                <h2 class="title main-reviews__title">Отзывы клиентов</h2>
+                <h2 class="title main-reviews__title">{{ __('app.reviews.title') }}</h2>
                 <div class="main-reviews__navigtion">
                     <button class="main-reviews__btn main-reviews__btn-prev">
                         <svg width="8" height="14" viewBox="0 0 8 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -183,7 +194,7 @@
                                 <div class="main-reviews__ava">
                                     <img src="{{ $r['avatar'] ?? asset('assets/img/user/1.png') }}" alt="User">
                                 </div>
-                                <h3 class="main-reviews__name">{{ $r['author'] ?? 'Гость' }}</h3>
+                                <h3 class="main-reviews__name">{{ $r['author'] ?? __('app.reviews.guest') }}</h3>
                                 <p class="main-reviews__text">{{ $r['text'] ?? '' }}</p>
                             </div>
                         </div>
@@ -197,19 +208,27 @@
         <img class="form-section-image form-section-image-left" src="{{ asset('assets/img/form/1.png') }}" alt="hand">
         <img class="form-section-image form-section-image-right" src="{{ asset('assets/img/form/2.png') }}" alt="pul">
         <div class="container">
-            <h2 class="form-section__title title">Контакты</h2>
+            <h2 class="form-section__title title">{{ __('app.footer.contacts') }}</h2>
             <div class="form-section__col">
+                @php
+                    try {
+                        $c = $contacts ?? \App\Models\ContactSetting::getCached();
+                    } catch (\Throwable $e) {
+                        $c = null;
+                    }
+
+                @endphp
                 <div class="form-section__socials">
-                    <a class="form-section__social" href="#!"><img src="{{ asset('assets/icons/whatsapp.svg') }}" alt=""></a>
-                    <a class="form-section__social" href="#!"><img src="{{ asset('assets/icons/youtube.svg') }}" alt=""></a>
-                    <a class="form-section__social" href="#!"><img src="{{ asset('assets/icons/telegram.svg') }}" alt=""></a>
+                    <a class="form-section__social" href="{{ $c?->whatsapp_link ?: '#!' }}" target="_blank"><img src="{{ asset('assets/icons/whatsapp.svg') }}" alt=""></a>
+                    <a class="form-section__social" href="{{ $c?->youtube_link  ?: '#!' }}" target="_blank"><img src="{{ asset('assets/icons/youtube.svg') }}" alt=""></a>
+                    <a class="form-section__social" href="{{ $c?->telegram_link ?: '#!' }}" target="_blank"><img src="{{ asset('assets/icons/telegram.svg') }}" alt=""></a>
                 </div>
                 <form class="form" method="POST" action="{{ route('leads.store') }}">
                     @csrf
-                    <input placeholder="Имя" class="form__input" name="name" id="name" type="text" required>
-                    <input placeholder="+7 747 123 45 67" class="form__input" name="phone" id="phone" type="tel" required>
-                    <textarea placeholder="Сообщение" class="form__area" name="message" id="message"></textarea>
-                    <button class="form__btn" type="submit">Отправить</button>
+                    <input placeholder="{{ __('app.form.name') }}" class="form__input" name="name" id="name" type="text" required>
+                    <input placeholder="{{ __('app.form.phone') }}" class="form__input" name="phone" id="phone" type="tel" required>
+                    <textarea placeholder="{{ __('app.form.message') }}" class="form__area" name="message" id="message"></textarea>
+                    <button class="form__btn" type="submit">{{ __('app.form.send') }}</button>
                 </form>
             </div>
         </div>

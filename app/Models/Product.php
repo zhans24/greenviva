@@ -4,17 +4,30 @@ namespace App\Models;
 
 use App\Support\PageData;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Spatie\Translatable\HasTranslations;
+use Illuminate\Support\Str;
 
 class Product extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use HasTranslations;
+
+    public array $translatable = [
+        'name',
+        'description',
+        'composition',
+        'usage',
+        'delivery_info',
+        'seo_title',
+        'seo_h1',
+        'seo_description',
+    ];
 
     protected $fillable = [
-        'category_id','sku','name','slug',
+        'category_id','brand_id','sku','name','slug',
         'price','old_price','is_available','is_best_seller','is_popular',
         'description','composition','usage','delivery_info',
         'seo_title','seo_h1','seo_description',
@@ -28,14 +41,9 @@ class Product extends Model implements HasMedia
         'old_price'      => 'int',
     ];
 
+    // slug здесь не трогаем — только формы.
     protected static function booted(): void
     {
-        static::saving(function (self $m) {
-            if (empty($m->slug)) {
-                $m->slug = Str::slug(Str::limit($m->name, 60, ''));
-            }
-        });
-
         static::saved(function () {
             PageData::forgetByTemplate('home');
         });
@@ -45,6 +53,7 @@ class Product extends Model implements HasMedia
     }
 
     public function category() { return $this->belongsTo(Category::class); }
+    public function brand()    { return $this->belongsTo(Brand::class); }
 
     public function registerMediaCollections(): void
     {
@@ -62,7 +71,7 @@ class Product extends Model implements HasMedia
             ->performOnCollections('cover', 'gallery', 'certificates');
     }
 
-    // SEO фоллбэки
+    // SEO фолбэки (локализованные)
     public function getSeoTitleAttribute($v) { return $v ?: $this->name; }
     public function getSeoH1Attribute($v)    { return $v ?: $this->name; }
     public function getSeoDescriptionAttribute($v)
@@ -72,7 +81,7 @@ class Product extends Model implements HasMedia
         return $text ? Str::limit($text, 160) : null;
     }
 
-    // helpers для таблиц/вьюх
+    // helpers
     public function getCoverUrlAttribute(): ?string
     {
         $m = $this->getFirstMedia('cover');
@@ -80,20 +89,18 @@ class Product extends Model implements HasMedia
     }
     public function getPriceFormattedAttribute(): string
     {
-        return number_format($this->price, 0, '.', ' ');
+        return number_format((int) $this->price, 0, '.', ' ');
     }
     public function getOldPriceFormattedAttribute(): ?string
     {
-        return $this->old_price ? number_format($this->old_price, 0, '.', ' ') : null;
+        return $this->old_price ? number_format((int) $this->old_price, 0, '.', ' ') : null;
     }
 
-    public function scopePopular($q)
-    {
-        return $q->where('is_popular', true);
-    }
+    public function scopePopular($q) { return $q->where('is_popular', true); }
 
-    public function brand()
+    public function nameCurrent(): ?string
     {
-        return $this->belongsTo(Brand::class);
+        return $this->getTranslation('name', app()->getLocale(), false)
+            ?: $this->getTranslation('name', 'ru', false);
     }
 }

@@ -9,7 +9,7 @@ use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder; // 👈 для кастомной сортировки
+use Illuminate\Database\Eloquent\Builder;
 
 class ProductsTable
 {
@@ -24,24 +24,32 @@ class ProductsTable
 
                 TextColumn::make('name')
                     ->label('Название')
-                    ->searchable()
-                    ->wrap(),
+                    ->wrap()
+                    ->formatStateUsing(fn ($state, $record) =>
+                    $record->getTranslation('name', app()->getLocale(), false)
+                        ?: $record->getTranslation('name', 'ru', false)
+                    )
+                    ->searchable(query: function (Builder $query, string $search) {
+                        $loc = app()->getLocale();
+                        return $query->where(function (Builder $q) use ($search, $loc) {
+                            $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.\"ru\"')) LIKE ?", ["%{$search}%"])
+                                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.\"{$loc}\"')) LIKE ?", ["%{$search}%"]);
+                        });
+                    }),
 
                 TextColumn::make('sku')
                     ->label('Код')
                     ->toggleable(),
 
-                // 🔹 ЕДИНЫЙ столбец "Цена, ₸"
                 TextColumn::make('effective_price')
                     ->label('Цена, ₸')
                     ->state(fn ($record) => $record->price
                         ? $record->price_formatted
                         : $record->old_price_formatted
                     )
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        // сортируем по COALESCE(price, old_price)
-                        return $query->orderByRaw('COALESCE(price, old_price) ' . $direction);
-                    })
+                    ->sortable(query: fn (Builder $query, string $direction) =>
+                    $query->orderByRaw('COALESCE(price, old_price) ' . $direction)
+                    )
                     ->alignRight(),
 
                 ToggleColumn::make('is_popular')
@@ -51,7 +59,6 @@ class ProductsTable
                 ToggleColumn::make('is_best_seller')
                     ->label('Best')
                     ->sortable(),
-
 
                 TextColumn::make('updated_at')
                     ->label('Обновлено')

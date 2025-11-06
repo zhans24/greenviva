@@ -2,13 +2,21 @@
 
 @section('title', ($category->seo_title ?? $category->name))
 @section('main_classes', 'page-main')
+@php $loc = app()->getLocale(); @endphp
 
 @section('content')
     <div class="container">
-        <nav class="breadcrumbs" aria-label="Хлебные крошки">
+        <nav class="breadcrumbs" aria-label="{{ __('app.breadcrumbs.aria') }}">
             <ul>
-                <li><a class="breadcrumbs__home" href="{{ url('/') }}">Главная</a></li>
-                <li><a class="breadcrumbs__link" href="{{ route('catalog.index') }}">/ Каталог продукции</a></li>
+                <li><a class="breadcrumbs__home" href="{{ url('/') }}">{{ __('app.breadcrumbs.home') }}</a></li>
+                <li>
+                    <a class="breadcrumbs__link"
+                       href="{{ $loc === 'ru'
+                            ? route('catalog.index')
+                            : route('catalog.index.localized', ['locale' => $loc]) }}">
+                        / {{ __('app.breadcrumbs.catalog') }}
+                    </a>
+                </li>
                 <li class="breadcrumbs__link" aria-current="page">/ {{ $category->name }}</li>
             </ul>
         </nav>
@@ -18,17 +26,20 @@
         <div class="container">
             <div class="categories__inner">
                 <h2 class="categories__title title">{{ $category->seo_h1 ?? $category->name }}</h2>
-                <p class="categories__result">{{ $totalCount }} товаров</p>
+                <p class="categories__result">{{ __('app.catalog.products_count', ['count' => $totalCount]) }}</p>
 
                 <div class="categories__col">
                     {{-- ФИЛЬТРЫ --}}
                     <div class="categories__filter">
-                        <form class="filter" method="GET" action="{{ route('catalog.category', $category->slug) }}">
-                            <h3 class="filter__title">Фильтр</h3>
+                        <form class="filter" method="GET"
+                              action="{{ $loc === 'ru'
+                                    ? route('catalog.category', $category->slug)
+                                    : route('catalog.category.localized', ['locale' => $loc, 'slug' => $category->slug]) }}">
+                            <h3 class="filter__title">{{ __('app.catalog.filter') }}</h3>
 
                             {{-- Бренды --}}
                             <div class="filter__group">
-                                <p class="filter__label">Бренд</p>
+                                <p class="filter__label">{{ __('app.catalog.brand') }}</p>
                                 @foreach($brands as $brand)
                                     <label class="checkbox">
                                         <input
@@ -44,10 +55,10 @@
 
                             {{-- Цена --}}
                             <div class="filter__price">
-                                <p class="filter__label">Цена</p>
+                                <p class="filter__label">{{ __('app.catalog.price') }}</p>
                                 <div class="filter__range">
                                     <label class="price-field">
-                                        <span class="price-field__label">От</span>
+                                        <span class="price-field__label">{{ __('app.catalog.price_from') }}</span>
                                         <input type="number" name="price_from" inputmode="numeric"
                                                value="{{ old('price_from', $price_from) }}" placeholder="0" />
                                     </label>
@@ -55,19 +66,20 @@
                                     <span class="filter__dash" aria-hidden="true">—</span>
 
                                     <label class="price-field">
-                                        <span class="price-field__label">До</span>
+                                        <span class="price-field__label">{{ __('app.catalog.price_to') }}</span>
                                         <input type="number" name="price_to" inputmode="numeric"
                                                value="{{ old('price_to', $price_to) }}" placeholder="0" />
                                     </label>
                                 </div>
                             </div>
 
-
                             <div class="filter__actions">
-                                <button type="submit" class="filter__btn">Показать</button>
-                                <a href="{{ route('catalog.category', $category->slug) }}" class="filter__reset" id="filter-reset">Сбросить</a>
+                                <button type="submit" class="filter__btn">{{ __('app.catalog.show') }}</button>
+                                <a href="{{ $loc === 'ru'
+                                    ? route('catalog.category', $category->slug)
+                                    : route('catalog.category.localized', ['locale' => $loc, 'slug' => $category->slug]) }}"
+                                   class="filter__reset" id="filter-reset">{{ __('app.catalog.reset') }}</a>
                             </div>
-
                         </form>
                     </div>
 
@@ -76,11 +88,14 @@
                         <ul class="categories__list">
                             @forelse ($products as $p)
                                 @php
-                                    $effectivePrice = $p->old_price ?? $p->price;
+                                    $effectivePrice = $p->price ?? $p->old_price;
                                     $formattedPrice = number_format($effectivePrice, 0, '.', ' ');
                                 @endphp
                                 <li class="categories__item">
-                                    <a class="categories__link" href="{{ route('product.show', $p->slug) }}">
+                                    <a class="categories__link"
+                                       href="{{ $loc === 'ru'
+                                            ? route('product.show', $p->slug)
+                                            : route('product.show.localized', ['locale' => $loc, 'slug' => $p->slug]) }}">
                                         <div class="categories__link-top">
                                             @if($p->is_best_seller)
                                                 <div class="badge">Best seller</div>
@@ -90,10 +105,11 @@
                                     </a>
                                     <div class="categories__item-bt">
                                         <p class="categories__name">{{ $p->name }}</p>
-                                        <p class="categories__price"><span>{{ $formattedPrice }}</span> Т</p>
+                                        <p class="categories__price"><span>{{ $formattedPrice }}</span> {{ __('app.currency') }}</p>
                                         <button class="categories__btn add-to-cart"
+                                                aria-label="{{ __('app.buttons.add_to_cart') }}"
                                                 data-product='@json(["id"=>$p->id,"name"=>$p->name,"price"=>$effectivePrice])'>
-                                            Добавить в корзину
+                                            {{ __('app.buttons.add_to_cart') }}
                                         </button>
                                     </div>
                                 </li>
@@ -101,12 +117,12 @@
                                 <li class="categories__item">
                                     <div class="categories__link" style="pointer-events: none">
                                         <div class="categories__link-top">
-                                            <img src="{{ asset('assets/img/products/placeholder.png') }}" alt="Нет товаров" />
+                                            <img src="{{ asset('assets/img/products/placeholder.png') }}" alt="{{ __('app.catalog.not_found') }}" />
                                         </div>
                                     </div>
                                     <div class="categories__item-bt">
-                                        <p class="categories__name">Товары не найдены</p>
-                                        <p class="categories__price"><span>—</span></p>
+                                        <p class="categories__name">{{ __('app.catalog.not_found') }}</p>
+                                        <p class="categories__price"><span>{{ __('app.common.na') }}</span></p>
                                     </div>
                                 </li>
                             @endforelse
@@ -119,11 +135,11 @@
                                 <li>
                                     @if ($products->onFirstPage())
                                         <span class="pagination-btn pagination-btn-prev" aria-disabled="true">
-                      <svg width="7" height="12" viewBox="0 0 7 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5.75 10.75L0.75 5.75L5.75 0.75" stroke="white" stroke-width="1.5"
-                              stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </span>
+                                            <svg width="7" height="12" viewBox="0 0 7 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M5.75 10.75L0.75 5.75L5.75 0.75" stroke="white" stroke-width="1.5"
+                                                      stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
+                                        </span>
                                     @else
                                         <a class="pagination-btn pagination-btn-prev" href="{{ $products->previousPageUrl() }}">
                                             <svg width="7" height="12" viewBox="0 0 7 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -156,11 +172,11 @@
                                         </a>
                                     @else
                                         <span class="pagination-btn pagination-btn-next" aria-disabled="true">
-                      <svg width="7" height="12" viewBox="0 0 7 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0.75 10.75L5.75 5.75L0.75 0.75" stroke="white" stroke-width="1.5"
-                              stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </span>
+                                            <svg width="7" height="12" viewBox="0 0 7 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M0.75 10.75L5.75 5.75L0.75 0.75" stroke="white" stroke-width="1.5"
+                                                      stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
+                                        </span>
                                     @endif
                                 </li>
                             </ul>
@@ -170,6 +186,7 @@
             </div>
         </div>
     </section>
+
     <script>
         (() => {
             const resetEl = document.getElementById('filter-reset');
@@ -182,12 +199,9 @@
                     form.querySelectorAll('input[type="number"], input[type="text"]').forEach(i => i.value = '');
                 }
 
-
                 e.preventDefault();
                 window.location.href = resetEl.getAttribute('href');
             });
         })();
     </script>
-
 @endsection
-

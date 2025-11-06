@@ -13,12 +13,20 @@ final class PageData
 {
     public static function getByTemplate(string $template): array
     {
-        $key = self::cacheKey($template);
+        $locale = app()->getLocale();
+        $key = self::cacheKey($template, $locale);
 
-        return Cache::rememberForever($key, function () use ($template) {
+        // лог до обращения к кэшу
+        $cached = Cache::get($key);
+
+
+        return Cache::rememberForever($key, function () use ($template, $key, $locale) {
+
             $page = Page::byTemplate($template);
 
-            if (!$page) {
+
+
+            if (! $page) {
                 return ['template' => $template, 'exists' => false];
             }
 
@@ -32,28 +40,35 @@ final class PageData
 
             $payload = $builder->build($page);
 
-            // базовая унификация
-            return array_replace_recursive([
+            $result = array_replace_recursive([
                 'template' => $template,
                 'exists'   => true,
-                'title'    => $page->title,
+                'title'    => Trans::model($page, 'title'),
                 'meta'     => [
-                    'title'       => $page->meta_title,
-                    'description' => $page->meta_description,
+                    'title'       => Trans::model($page, 'meta_title'),
+                    'description' => Trans::model($page, 'meta_description'),
                 ],
             ], $payload);
+
+
+
+            return $result;
         });
     }
 
     public static function forgetByTemplate(string $template): void
     {
-        Cache::forget(self::cacheKey($template));
+        $locales = config('app.available_locales', ['ru','kz','en']);
+        foreach ($locales as $loc) {
+            $key = self::cacheKey($template, $loc);
+            Cache::forget($key);
+
+        }
     }
 
-    private static function cacheKey(string $template): string
+    private static function cacheKey(string $template, ?string $locale = null): string
     {
-        return 'pagedata:template:' . $template;
+        $locale = $locale ?: app()->getLocale();
+        return "pagedata:{$locale}:template:{$template}";
     }
-
-
 }

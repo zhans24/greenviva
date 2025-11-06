@@ -7,6 +7,7 @@ use App\Services\ContactNormalizer;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
@@ -34,9 +35,17 @@ class ContactSettings extends Page implements HasSchemas
     {
         $s = ContactSetting::singleton();
 
+        $ct = is_array($s->company_text)
+            ? $s->company_text
+            : (filled($s->company_text) ? ['ru' => $s->company_text] : []);
+
         $this->data = [
             'company_name' => $s->company_name,
-            'company_text' => $s->company_text,
+            'company_text' => [
+                'ru' => $ct['ru'] ?? '',
+                'kz' => $ct['kz'] ?? '',
+                'en' => $ct['en'] ?? '',
+            ],
             'phone'        => $s->phone,
             'email'        => $s->email_link,
             'whatsapp'     => $s->whatsapp_link,
@@ -46,7 +55,6 @@ class ContactSettings extends Page implements HasSchemas
             'map_embed'    => $s->map_embed,
         ];
     }
-
     public function schema(Schema $schema): Schema
     {
         return $schema
@@ -55,7 +63,24 @@ class ContactSettings extends Page implements HasSchemas
                 Section::make('Компания')
                     ->schema([
                         TextInput::make('company_name')->label('Название компании')->maxLength(255),
-                        Textarea::make('company_text')->label('Описание (footer)')->rows(3)->maxLength(2000),
+                        Tabs::make('company_text_tabs')
+                            ->tabs([
+                                Tabs\Tab::make('RU')->schema([
+                                    Textarea::make('company_text.ru')
+                                        ->label('Описание (RU)')
+                                        ->rows(3)->maxLength(2000),
+                                ]),
+                                Tabs\Tab::make('KZ')->schema([
+                                    Textarea::make('company_text.kz')
+                                        ->label('Сипаттама (KZ)')
+                                        ->rows(3)->maxLength(2000),
+                                ]),
+                                Tabs\Tab::make('EN')->schema([
+                                    Textarea::make('company_text.en')
+                                        ->label('Description (EN)')
+                                        ->rows(3)->maxLength(2000),
+                                ]),
+                            ])->columnSpan(6),
                     ])
                     ->columns(1)->columnSpan(6),
 
@@ -85,9 +110,17 @@ class ContactSettings extends Page implements HasSchemas
                     ->color('primary')
                     ->action(function () {
                         try {
+                            // Собираем JSON по языкам, выбрасывая пустые
+                            $text = [
+                                'ru' => trim((string) data_get($this->data, 'company_text.ru')) ?: null,
+                                'kz' => trim((string) data_get($this->data, 'company_text.kz')) ?: null,
+                                'en' => trim((string) data_get($this->data, 'company_text.en')) ?: null,
+                            ];
+                            $text = array_filter($text, fn ($v) => filled($v));
+
                             $payload = [
                                 'company_name'   => trim((string) ($this->data['company_name'] ?? '')) ?: null,
-                                'company_text'   => trim((string) ($this->data['company_text'] ?? '')) ?: null,
+                                'company_text'   => $text ?: null,
                                 'phone'          => ContactNormalizer::normalizeTel($this->data['phone'] ?? null),
                                 'email_link'     => ContactNormalizer::normalizeMailto($this->data['email'] ?? null),
                                 'whatsapp_link'  => ContactNormalizer::normalizeWhatsapp($this->data['whatsapp'] ?? null),
@@ -98,15 +131,19 @@ class ContactSettings extends Page implements HasSchemas
                             ];
 
                             $rules = [
-                                'company_name'   => ['nullable','string','max:255'],
-                                'company_text'   => ['nullable','string','max:2000'],
-                                'phone'          => ['nullable','regex:~^tel:\+\d{6,}$~'],
-                                'email_link'     => ['nullable','regex:~^mailto:[^@\s]+@[^@\s]+\.[^@\s]+$~i'],
-                                'whatsapp_link'  => ['nullable','url','regex:~^https?://(wa\.me|api\.whatsapp\.com)/~i'],
-                                'youtube_link'   => ['nullable','url'],
-                                'telegram_link'  => ['nullable','url'],
-                                'address'        => ['nullable','string','max:2000'],
-                                'map_embed'      => ['nullable','string','max:10000'],
+                                'company_name'       => ['nullable','string','max:255'],
+                                'company_text'       => ['nullable','array'],
+                                'company_text.ru'    => ['nullable','string','max:2000'],
+                                'company_text.kz'    => ['nullable','string','max:2000'],
+                                'company_text.en'    => ['nullable','string','max:2000'],
+
+                                'phone'              => ['nullable','regex:~^tel:\+\d{6,}$~'],
+                                'email_link'         => ['nullable','regex:~^mailto:[^@\s]+@[^@\s]+\.[^@\s]+$~i'],
+                                'whatsapp_link'      => ['nullable','url','regex:~^https?://(wa\.me|api\.whatsapp\.com)/~i'],
+                                'youtube_link'       => ['nullable','url'],
+                                'telegram_link'      => ['nullable','url'],
+                                'address'            => ['nullable','string','max:2000'],
+                                'map_embed'          => ['nullable','string','max:10000'],
                             ];
 
                             Validator::make($payload, $rules, [

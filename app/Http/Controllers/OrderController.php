@@ -25,7 +25,8 @@ class OrderController extends Controller
 
         // Забираем товары, подтверждаем цены на бэке (чтобы не доверять фронту)
         $productIds = collect($data['items'])->pluck('id')->all();
-        $products   = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
+        $products   = Product::query()->whereIn('id', $productIds)
+            ->get()->keyBy('id');
 
         if ($products->isEmpty()) {
             return response()->json(['ok' => false, 'message' => 'Товары не найдены'], 422);

@@ -1,47 +1,61 @@
 <?php
-// app/Http/Controllers/Catalog/CatalogController.php
 
 namespace App\Http\Controllers\Catalog;
 
 use App\Http\Controllers\Controller;
-use App\Models\Brand;
-use App\Models\Category;
-use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use App\Models\{Brand, Category, Product};
 use Illuminate\Support\Facades\DB;
 
 class CatalogController extends Controller
 {
-    public function index()
+    public function index(Request $request, string ...$params)
     {
+
+        $locale = $params[0] ?? $request->route('locale') ?? app()->getLocale() ?? 'ru';
+
         $categories = Category::query()
             ->where('is_active', true)
             ->orderBy('sort')
             ->orderBy('name')
             ->get();
 
-        // вьюха лежит в resources/views/pages/catalog.blade.php
         return view('pages.catalog', compact('categories'));
     }
 
-    public function category(string $slug, Request $request)
+    // /catalog/{slug}  и  /{locale}/catalog/{slug}
+    public function category(Request $request, string ...$params)
     {
+        // RU: $params = ['pishhevye-dobavki']
+        // KZ/EN: $params = ['kz','pishhevye-dobavki'] / ['en','...']
+        [$first, $second] = $params + [null, null];
+
+        if ($second === null) {
+            // RU путь (без префикса)
+            $locale = 'ru';
+            $slug   = $first;
+        } else {
+            // Локализованный путь
+            $locale = $first;
+            $slug   = $second;
+        }
+
+        $slug = trim(Str::lower($slug));
+
+        $probe = Category::query()->whereRaw('LOWER(TRIM(slug)) = ?', [$slug])->first();
+
         $category = Category::query()
-            ->where('slug', $slug)
+            ->whereRaw('LOWER(TRIM(slug)) = ?', [$slug])
             ->where('is_active', true)
             ->firstOrFail();
 
-        // Бренды из GET
         $selectedBrandIds = collect($request->input('brands', []))
-            ->map(fn ($v) => (int) $v)
-            ->filter()
-            ->values();
+            ->map(fn ($v) => (int) $v)->filter()->values();
 
-        // Цена: берём только если поле реально пришло
         $priceFrom = $request->filled('price_from') ? $request->integer('price_from') : null;
         $priceTo   = $request->filled('price_to')   ? $request->integer('price_to')   : null;
 
-        // Бренды, у которых есть товары в этой категории
         $brands = Brand::query()
             ->where('is_active', true)
             ->whereExists(function ($q) use ($category) {
@@ -51,10 +65,9 @@ class CatalogController extends Controller
                     ->where('products.category_id', $category->id)
                     ->where('products.is_available', true);
             })
-            ->orderBy('name')
+            ->orderBy('created_at')
             ->get(['id', 'name']);
 
-        // Товары категории + фильтры
         $products = Product::query()
             ->where('category_id', $category->id)
             ->where('is_available', true)
@@ -65,14 +78,11 @@ class CatalogController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $totalCount = $products->total();
-
-        // ВАЖНО: правильный путь к вьюхе pages/category.blade.php
         return view('pages.category', [
             'category'   => $category,
             'brands'     => $brands,
             'products'   => $products,
-            'totalCount' => $totalCount,
+            'totalCount' => $products->total(),
             'price_from' => $priceFrom,
             'price_to'   => $priceTo,
             'selected'   => $selectedBrandIds->all(),

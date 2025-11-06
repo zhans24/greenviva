@@ -1,23 +1,50 @@
 <?php
-// app/Http/Controllers/Catalog/ProductController.php
 
 namespace App\Http\Controllers\Catalog;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
-    public function show(string $slug)
+    // /product/{slug}
+    public function show(Request $request, string $slug)
     {
+        Log::debug('ProductController@show (no-locale)', [
+            'app_locale' => app()->getLocale(),
+            'slug_raw'   => $slug,
+            'url'        => $request->fullUrl(),
+        ]);
+
+        return $this->renderProduct($request, $slug);
+    }
+
+    // /{locale}/product/{slug}
+    public function showLocalized(Request $request, string $locale, string $slug)
+    {
+        Log::debug('ProductController@showLocalized', [
+            'route_locale' => $locale,
+            'app_locale'   => app()->getLocale(),
+            'slug_raw'     => $slug,
+            'url'          => $request->fullUrl(),
+        ]);
+
+        return $this->renderProduct($request, $slug);
+    }
+
+    private function renderProduct(Request $request, string $slug)
+    {
+        $slug = trim(Str::lower($slug));
+
         $product = Product::query()
             ->with(['category:id,name,slug', 'brand:id,name'])
-            ->where('slug', $slug)
+            ->whereRaw('LOWER(TRIM(slug)) = ?', [$slug])
             ->firstOrFail();
 
-        // price (скидка) или old_price
         $effectivePrice = $product->price ?? $product->old_price;
-
         $gallery = $product->getMedia('gallery');
         $certs   = $product->getMedia('certificates');
 
@@ -29,13 +56,6 @@ class ProductController extends Controller
             ->take(12)
             ->get();
 
-        // ВАЖНО: правильный путь к вьюхе pages/product.blade.php
-        return view('pages.product', [
-            'product'        => $product,
-            'effectivePrice' => $effectivePrice,
-            'gallery'        => $gallery,
-            'certs'          => $certs,
-            'related'        => $related,
-        ]);
+        return view('pages.product', compact('product','effectivePrice','gallery','certs','related'));
     }
 }

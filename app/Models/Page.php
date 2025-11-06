@@ -8,10 +8,19 @@ use Illuminate\Support\Facades\Cache;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Spatie\Translatable\HasTranslations;
 
 class Page extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use HasTranslations;
+
+    public array $translatable = [
+        'title',
+        'meta_title',
+        'meta_description',
+        'content', // локализованный JSON
+    ];
 
     protected $fillable = [
         'title','slug','template','is_published',
@@ -20,7 +29,6 @@ class Page extends Model implements HasMedia
 
     protected $casts = [
         'is_published' => 'bool',
-        'content'      => 'array',
         'published_at' => 'datetime',
     ];
 
@@ -42,12 +50,11 @@ class Page extends Model implements HasMedia
     {
         // ABOUT
         $this->addMediaCollection('about_history')->singleFile();
-        $this->addMediaCollection('about_album'); // добавили галерею
+        $this->addMediaCollection('about_album');
         $this->addMediaCollection('about_certificates');
 
         // HOME
         $this->addMediaCollection('home_banners');
-
     }
 
     public function registerMediaConversions(?Media $media = null): void

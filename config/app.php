@@ -79,6 +79,8 @@ return [
     */
 
     'locale' => env('APP_LOCALE', 'en'),
+    'available_locales' => ['ru', 'kz', 'en'],
+
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 

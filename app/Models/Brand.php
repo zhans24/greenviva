@@ -3,28 +3,29 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use Spatie\Translatable\HasTranslations;
 
 class Brand extends Model
 {
+    use HasTranslations;
+
     protected $fillable = ['name', 'slug', 'is_active'];
 
     protected $casts = [
         'is_active' => 'bool',
     ];
 
-    protected static function booted(): void
-    {
-        static::saving(function (self $brand) {
-            if (empty($brand->slug)) {
-                $brand->slug = Str::slug($brand->name);
-            }
-        });
-    }
+    public array $translatable = ['name'];
 
+    // Отношения:
     public function products()
     {
         return $this->hasMany(Product::class);
     }
-}
 
+    public function nameCurrent(): ?string
+    {
+        return $this->getTranslation('name', app()->getLocale(), false)
+            ?: $this->getTranslation('name', 'ru', false);
+    }
+}

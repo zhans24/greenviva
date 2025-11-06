@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cartList.innerHTML = ''
 
         if (cart.length === 0) {
-            cartList.innerHTML = '<p class="cart-empty">Ваша корзина пуста</p>'
+            cartList.innerHTML = `<p class="cart-empty">${T('cart.empty','Ваша корзина пуста')}</p>`
             return
         }
 
@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="cart__image"><img src="${item.image}" alt="${item.name}"></div>
           <div class="cart__info">
             <h3 class="cart__name">${item.name}</h3>
-            <h4 class="cart__code">Код товара: ${item.id}</h4>
+            <h4 class="cart__code">${T('cart.code','Код товара')}: ${item.id}</h4>
           </div>
           <div class="cart__price">${totalPrice} T</div>
         </a>
@@ -224,9 +224,9 @@ document.addEventListener('DOMContentLoaded', () => {
             addToCart({ id, name, price, image, quantity })
 
             btn.classList.add('added', 'in-cart')
-            btn.textContent = 'В корзине'
+            btn.textContent = T('cart.in_cart', 'В корзине')
             btn.disabled = true
-            showToast('Товар добавлен в корзину')
+            showToast(T('toast.added', 'Товар добавлен в корзину'))
         })
     })
 
@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const cart = getCart()
             if (!cart.length) {
-                showToast('Корзина пуста', 'error')
+                showToast(T('toast.cart_empty','Корзина пуста'), 'error')
                 return
             }
 
@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })).filter(x => x.id > 0)
 
             if (!items.length) {
-                showToast('Не удалось распознать товары', 'error')
+                showToast(T('toast.parse_error','Не удалось распознать товары'), 'error')
                 return
             }
 
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // простая валидация
             if (!payload.name || !payload.phone || !payload.address) {
-                showToast('Заполните имя, телефон и адрес', 'error')
+                showToast(T('toast.fill_required','Заполните имя, телефон и адрес'), 'error')
                 return
             }
 
@@ -298,11 +298,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json().catch(() => ({}))
                 if (!res.ok || !data.ok) {
                     console.error('Order error:', data)
-                    showToast(data.message || 'Ошибка оформления заказа', 'error')
+                    showToast(data.message || T('toast.order_error','Ошибка оформления заказа'), 'error')
                     return
                 }
 
-                showToast(`✅ Заказ принят! № ${data.number}`, 'success')
+                showToast(T('toast.order_ok','✅ Заказ принят! № :number').replace(':number', data.number), 'success')
                 localStorage.removeItem('cart')
                 renderCartItems()
                 updateHeaderCount()
@@ -351,8 +351,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     generateProductId(productEl)
             }
             const isInCart = cart.some(item => String(item.id) === String(id))
-            if (isInCart) { btn.classList.add('added'); btn.textContent = 'В корзине'; btn.disabled = true }
-            else { btn.classList.remove('added'); btn.textContent = 'Добавить в корзину'; btn.disabled = false }
+            if (isInCart) { btn.classList.add('added'); btn.textContent = T('cart.in_cart','В корзине'); btn.disabled = true }
+            else { btn.classList.remove('added'); btn.textContent = T('cart.add','Добавить в корзину'); btn.disabled = false }
         })
     }
     syncAddToCartButtons()
